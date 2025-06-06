@@ -38,31 +38,37 @@ char *parsing(char *linebuff,char *init,char *separator,char *end){
     
     // pegar o tamanho do usuario pra alocar só o que precisar e fazer o mesmo pro hash da senha e script
     char *username = NULL;
-    username = calloc(sizeof(char),sizeof(char) * 50); 
     
     char *hash = NULL;
-    hash = calloc(sizeof(char),sizeof(char) * 50); 
     
     char *script = NULL;
-    script = calloc(sizeof(char),sizeof(char) * 50); 
    
     /* ponteiro sendo reduzido para logo depois do inicio da formatação*/
     ponteiro = strstr(ponteiro,init) + leninit;
 
+    size_t lenuser = strcspn(ponteiro,separator);
+    username = calloc(sizeof(char),sizeof(char) * lenuser); 
+
     /* concatenando o usuario no array */
-    strncat(username,ponteiro, strcspn(ponteiro,separator));
-    
+    strncat(username,ponteiro, lenuser);
+
     /* ponteiro sendo reduzido para logo depois do primeiro separador */
     ponteiro = strstr(ponteiro,separator) + lenseparator;
     
+    size_t lenpass = strcspn(ponteiro,separator);   
+    hash = calloc(sizeof(char),sizeof(char) * lenpass); 
+
     /* concatendando o hash da senha do usuario no array*/
-    strncat(hash,ponteiro, strcspn(ponteiro,separator));
+    strncat(hash,ponteiro, lenpass);
 
     /* ponteiro sendo reduzido para logo depois do segundo separador */
     ponteiro = strstr(ponteiro,separator) + lenseparator;
     
+    size_t lenscript = strcspn(ponteiro,end);
+    script = calloc(sizeof(char),sizeof(char) * lenscript); 
+
     /* concatenando o caminho para o script no array */
-    strncat(script,ponteiro, strcspn(ponteiro,end));
+    strncat(script,ponteiro, lenscript);
 
 #ifdef DEBUG
 
