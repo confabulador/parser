@@ -3,86 +3,128 @@
 #include <string.h>
 
 #define DEBUG
+#define INVALID_DATA NULL
 
-
-struct SecondAuthData{
+typedef struct {
     char *user;         /* o nome do usuario na linha */
-    char **pwhashs;     /* os hash já calculado da(s) senha(s) de segurança para o usuario */
-    char **scripts;     /* os scrips/programas dos repectivos hash de segurança */
-    size_t len;         /* a quantidade de hashs e scripts associados ao usuario que esta tentando logar */
-};
+    char *pwhash;     /* os hash já calculado da(s) senha(s) de segurança para o usuario */
+    char *script;     /* os scrips/programas dos repectivos hash de segurança */
+}AuthData;
 
 
 
 
-char *parsing(char *linebuff,char *init,char *separator,char *end){
-    size_t lenline = strlen(linebuff);          /* tamanho linha */
+AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
     size_t leninit = strlen(init);              /* tamanho da formatação inicial */
-    size_t lenend = strlen(end);                /* tamanho da formatação final */
     size_t lenseparator = strlen(separator);    /* tamanho da formatação de separação */
-    
-    struct SecondAuthData info;
 
     char *ponteiro = NULL;
     
     ponteiro = strstr(linebuff,init); /* string iniciando a partir da formatação do arg <init> */
     /* checando se é uma linha valida para receber  */
     if (ponteiro == NULL){
-        return NULL;
+        return INVALID_DATA;
     }
-
-    /* tenho que verificar se é uma linha para o usuario requisitado , separar usuario,o hash e o script ,
-     * colcar tudo na strutura do <SecondAuthData> e retornar um ponteiro pra ela */
-    //<format><user><sep><hash><sep><script><end>
     
+    /* formatação tem que seguir esse padrão <format><user><sep><hash><sep><script><end> */
     
-    // pegar o tamanho do usuario pra alocar só o que precisar e fazer o mesmo pro hash da senha e script
     char *username = NULL;
-    
     char *hash = NULL;
-    
     char *script = NULL;
    
     /* ponteiro sendo reduzido para logo depois do inicio da formatação*/
     ponteiro = strstr(ponteiro,init) + leninit;
 
     size_t lenuser = strcspn(ponteiro,separator);
-    username = calloc(sizeof(char),sizeof(char) * lenuser); 
 
+    if(lenuser == 0){return INVALID_DATA;} /* caso não tenha usuario vai retornar erro*/ 
+    username = calloc(sizeof(char),sizeof(char) * (lenuser + 1) ); 
+    
     /* concatenando o usuario no array */
     strncat(username,ponteiro, lenuser);
 
     /* ponteiro sendo reduzido para logo depois do primeiro separador */
-    ponteiro = strstr(ponteiro,separator) + lenseparator;
+    ponteiro = strstr(ponteiro,separator);
+    if(ponteiro == NULL){
+
+#ifdef DEBUG
+        printf("PRIMEIRO SEPARADOR - %p\n",ponteiro);
+#endif // DEBUG
+
+        free(username);
+        return INVALID_DATA;
+    }
+    ponteiro = ponteiro + lenseparator;
     
+
     size_t lenpass = strcspn(ponteiro,separator);   
-    hash = calloc(sizeof(char),sizeof(char) * lenpass); 
+    if(lenpass == 0){
+        free(username);
+        return INVALID_DATA;
+    } /* caso não tenha hash da senha vai retornar erro*/ 
+    
+    hash = calloc(sizeof(char),sizeof(char) * (lenpass + 1)); 
 
     /* concatendando o hash da senha do usuario no array*/
     strncat(hash,ponteiro, lenpass);
 
     /* ponteiro sendo reduzido para logo depois do segundo separador */
-    ponteiro = strstr(ponteiro,separator) + lenseparator;
+    ponteiro = strstr(ponteiro,separator);
+    if(ponteiro == NULL){
+
+#ifdef DEBUG
+        printf("SEGUNDO SEPARADOR - %p\n",ponteiro);
+#endif // DEBUG 
+
+        free(username);
+        free(hash);
+        return INVALID_DATA;
+    }
+    ponteiro = ponteiro + lenseparator;
     
     size_t lenscript = strcspn(ponteiro,end);
-    script = calloc(sizeof(char),sizeof(char) * lenscript); 
-
+    if(lenscript == 0){
+        free(username);
+        free(hash);
+        return INVALID_DATA;
+    } /* caso não tenha script vai retornar erro*/ 
+    
+    script = calloc(sizeof(char),sizeof(char) * (lenscript + 1)); 
+    
     /* concatenando o caminho para o script no array */
     strncat(script,ponteiro, lenscript);
+   
+    /* ponteiro sendo reduzido para o final */
+    ponteiro = strstr(ponteiro,end);
+    if(ponteiro == NULL){
+
+#ifdef DEBUG
+    printf("FINAL - %p\n",ponteiro);
+#endif // DEBUG        
+        
+        free(username);
+        free(hash);
+        free(script);
+        return INVALID_DATA;
+    }
 
 #ifdef DEBUG
 
     printf("%s - %s - %s\n",username,hash,script);
 #endif // DEBUG
     
-    free(username);
-    free(hash);
-    free(script);
-
-
+    /* se tudo deu certo os dados vão ser passados para o ponteiro da estrutura AuthData
+     * e logo em seguida vai ser retornado */
+    
+    AuthData *SecondAuthData = malloc(sizeof(AuthData));
+    SecondAuthData -> user = username;
+    SecondAuthData -> pwhash = hash;
+    SecondAuthData -> script = script;
+    
+    return SecondAuthData;
 }
 
-int lerarquivo(char *arquivo){
+AuthData *lerarquivo(char *arquivo, char *init, char *separator, char *end, char *usuario){
   /* opening the file in read mode */
     FILE *fp = fopen(arquivo,"r");
     if (fp == NULL) {
@@ -97,13 +139,28 @@ int lerarquivo(char *arquivo){
     /* read each line using getline until end of file is reached */
     while ((read = getline(&line, &len, fp)) != -1) {
         /* calling the parsing function */
-        // tenho que implementar ainda :(
-        parsing(line,"%$#",":",";");
+        //parsing(line, init, separator, end);
+        AuthData *estrutura = parsing(line, init, separator, end);
+        if(estrutura != INVALID_DATA){
+            if(strcmp(usuario, estrutura -> user) == 0){
+                free(line);
+                fclose(fp);
+                return estrutura;
+            }
+            limparstruct(estrutura);
+        }
     }
 
     /* Free the memory allocated by getline and close the file */
     free(line);
     fclose(fp);
+    
+    return INVALID_DATA;
+}
 
-  return EXIT_SUCCESS;
+void limparstruct(AuthData *estrutura){
+  free(estrutura -> user);
+  free(estrutura -> pwhash);
+  free(estrutura -> script);
+  free(estrutura);
 }
