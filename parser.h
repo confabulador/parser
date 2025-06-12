@@ -11,8 +11,12 @@ typedef struct {
     char *script;     /* os scrips/programas dos repectivos hash de segurança */
 }AuthData;
 
-
-
+void limparstruct(AuthData *estrutura){
+  free(estrutura -> user);
+  free(estrutura -> pwhash);
+  free(estrutura -> script);
+  free(estrutura);
+}
 
 AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
     size_t leninit = strlen(init);              /* tamanho da formatação inicial */
@@ -37,8 +41,15 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
 
     size_t lenuser = strcspn(ponteiro,separator);
 
-    if(lenuser == 0){return INVALID_DATA;} /* caso não tenha usuario vai retornar erro*/ 
-    username = calloc(sizeof(char),sizeof(char) * (lenuser + 1) ); 
+    if(lenuser == 0){
+        return INVALID_DATA;
+    } /* caso não tenha usuario vai retornar erro*/ 
+    
+    username = calloc(sizeof(char),sizeof(char) * (lenuser + 1) );
+    /* verificando se foi alocado */ 
+    if(username == NULL){
+        return NULL;
+    }
     
     /* concatenando o usuario no array */
     strncat(username,ponteiro, lenuser);
@@ -63,7 +74,12 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
         return INVALID_DATA;
     } /* caso não tenha hash da senha vai retornar erro*/ 
     
-    hash = calloc(sizeof(char),sizeof(char) * (lenpass + 1)); 
+    hash = calloc(sizeof(char),sizeof(char) * (lenpass + 1));
+    /* verificando se foi alocado */
+    if(hash == NULL){
+        free(username);
+        return NULL;
+    }
 
     /* concatendando o hash da senha do usuario no array*/
     strncat(hash,ponteiro, lenpass);
@@ -90,7 +106,13 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
     } /* caso não tenha script vai retornar erro*/ 
     
     script = calloc(sizeof(char),sizeof(char) * (lenscript + 1)); 
-    
+    /* verificando se foi alocado */
+    if(script == NULL){
+        free(username);
+        free(hash);
+        return NULL;
+    }
+
     /* concatenando o caminho para o script no array */
     strncat(script,ponteiro, lenscript);
    
@@ -117,6 +139,14 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
      * e logo em seguida vai ser retornado */
     
     AuthData *SecondAuthData = malloc(sizeof(AuthData));
+    /* verificando se foi alocado */
+    if(SecondAuthData == NULL){
+        free(username);
+        free(hash);
+        free(script);
+        return NULL;
+    }
+
     SecondAuthData -> user = username;
     SecondAuthData -> pwhash = hash;
     SecondAuthData -> script = script;
@@ -129,7 +159,7 @@ AuthData *lerarquivo(char *arquivo, char *init, char *separator, char *end, char
     FILE *fp = fopen(arquivo,"r");
     if (fp == NULL) {
         fprintf(stderr,"Error opening file\n");
-        return 1;
+        return INVALID_DATA;
     }
 
     char *line = NULL;   /* pointer to hold the address of the line buffer */
@@ -156,11 +186,4 @@ AuthData *lerarquivo(char *arquivo, char *init, char *separator, char *end, char
     fclose(fp);
     
     return INVALID_DATA;
-}
-
-void limparstruct(AuthData *estrutura){
-  free(estrutura -> user);
-  free(estrutura -> pwhash);
-  free(estrutura -> script);
-  free(estrutura);
 }
