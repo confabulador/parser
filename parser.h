@@ -18,6 +18,36 @@ void limparstruct(AuthData *estrutura){
   free(estrutura);
 }
 
+
+/*
+ * essa função vai retornar o tamanho de uma string antes de uma segunda string ser detectada + 1
+ * por exemplo: stringcount("ola mundo","mundo") vai retornar o numero 5
+ * caso função n tenha encontrado nada ela vai retornar 0
+ * recomendado verificar se a função retornou NULL caso não subtrair 1 para ter o valor real da string
+ */
+size_t stringcount(char *base, char *subject){
+    
+    char flag = 0;
+
+    for (size_t counter = 0; base[counter] != '\0'; counter++){
+        flag = 0;
+        if (base[counter] == subject[0]){
+            for (size_t inter_counter = 0; subject[inter_counter] != '\0'; inter_counter ++){
+                if (base[counter+inter_counter] != subject[inter_counter]){
+                    flag = 1;
+                    break;
+                }
+           }
+            if (flag == 0){
+                // encontrou
+                return counter + 1;
+            }
+        }   
+    }
+    // nada bateu
+    return 0;
+}
+
 AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
     size_t leninit = strlen(init);              /* tamanho da formatação inicial */
     size_t lenseparator = strlen(separator);    /* tamanho da formatação de separação */
@@ -39,9 +69,12 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
     /* ponteiro sendo reduzido para logo depois do inicio da formatação*/
     ponteiro = strstr(ponteiro,init) + leninit;
 
-    size_t lenuser = strcspn(ponteiro,separator);
+    size_t lenuser = stringcount(ponteiro,separator);
 
     if(lenuser == 0){
+#ifdef DEBUG
+        printf("PRIMEIRO SEPARADOR - %p\n",ponteiro);
+#endif // DEBUG
         return INVALID_DATA;
     } /* caso não tenha usuario vai retornar erro*/ 
     
@@ -51,25 +84,23 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
         return NULL;
     }
     
+    lenuser -= 1;
     /* concatenando o usuario no array */
     strncat(username,ponteiro, lenuser);
 
     /* ponteiro sendo reduzido para logo depois do primeiro separador */
     ponteiro = strstr(ponteiro,separator);
     if(ponteiro == NULL){
-
-#ifdef DEBUG
-        printf("PRIMEIRO SEPARADOR - %p\n",ponteiro);
-#endif // DEBUG
-
         free(username);
         return INVALID_DATA;
     }
-    ponteiro = ponteiro + lenseparator;
-    
 
-    size_t lenpass = strcspn(ponteiro,separator);   
+    ponteiro = ponteiro + lenseparator;
+    size_t lenpass = stringcount(ponteiro,separator);   
     if(lenpass == 0){
+#ifdef DEBUG
+        printf("SEGUNDO SEPARADOR - %p\n",ponteiro);
+#endif // DEBUG 
         free(username);
         return INVALID_DATA;
     } /* caso não tenha hash da senha vai retornar erro*/ 
@@ -80,26 +111,26 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
         free(username);
         return NULL;
     }
-
+    
+    lenpass -= 1;
     /* concatendando o hash da senha do usuario no array*/
     strncat(hash,ponteiro, lenpass);
 
     /* ponteiro sendo reduzido para logo depois do segundo separador */
     ponteiro = strstr(ponteiro,separator);
     if(ponteiro == NULL){
-
-#ifdef DEBUG
-        printf("SEGUNDO SEPARADOR - %p\n",ponteiro);
-#endif // DEBUG 
-
         free(username);
         free(hash);
         return INVALID_DATA;
     }
+    
     ponteiro = ponteiro + lenseparator;
     
-    size_t lenscript = strcspn(ponteiro,end);
+    size_t lenscript = stringcount(ponteiro,end);
     if(lenscript == 0){
+#ifdef DEBUG
+    printf("FINAL - %p\n",ponteiro);
+#endif // DEBUG        
         free(username);
         free(hash);
         return INVALID_DATA;
@@ -112,18 +143,14 @@ AuthData *parsing(char *linebuff,char *init,char *separator,char *end){
         free(hash);
         return NULL;
     }
-
+    
+    lenscript -=1;
     /* concatenando o caminho para o script no array */
     strncat(script,ponteiro, lenscript);
    
     /* ponteiro sendo reduzido para o final */
     ponteiro = strstr(ponteiro,end);
     if(ponteiro == NULL){
-
-#ifdef DEBUG
-    printf("FINAL - %p\n",ponteiro);
-#endif // DEBUG        
-        
         free(username);
         free(hash);
         free(script);

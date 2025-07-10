@@ -3,11 +3,10 @@
 /* mude diretorio para onde vai ficar o arquivo de senhas */
 #define PASS_FILE "./senhas.conf"
 
-/* mude esses valores para oque desejar */
+/* mude esses valores para o que desejar */
 #define INIT "f%$#"
-#define SEPARATOR ":"
-#define END ";"
-
+#define SEPARATOR "separador"
+#define END "fim"
 
 int main(int argc, char *argv[])
 {
